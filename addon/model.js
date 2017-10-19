@@ -402,6 +402,7 @@ export default class MegamorphicModel extends Ember.Object {
 
   // TODO: drop change events for unretrieved properties
   setUnknownProperty(key, value) {
+    // TODO Support for attribute whitelisting
     if (key === OWNER_KEY) {
       // 2.12 support; later versions avoid this call entirely
       return;

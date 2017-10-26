@@ -248,7 +248,11 @@ export default class MegamorphicModel extends Ember.Object {
   }
 
   get _modelName() {
-    return this._internalModel.modelName;
+    return this._subModelName || (this._internalModel && this._internalModel.modelName);
+  }
+
+  set _modelName(value) {
+    this._subModelName = value;
   }
 
   __defineNonEnumerable(property) {

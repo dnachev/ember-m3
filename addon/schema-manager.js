@@ -19,7 +19,14 @@ export class SchemaManager {
     return this.schema.includesModel(key, value, modelName);
   }
 
+  resolveModelName(modelName) {
+    return this.schema.resolveModelName(modelName);
+  }
+
   isAttributeIncluded(modelName, attrName) {
+    if (typeof this.schema.isAttributeIncluded === 'function') {
+      return this.schema.isAttributeIncluded(modelName, attrName);
+    }
     let whitelist = this._modelSchemaProperty(modelName, 'attributes');
     return !whitelist || whitelist.includes(attrName);
   }

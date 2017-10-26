@@ -21,7 +21,7 @@ export default class QueryCache {
     this.__adapter = null;
   }
 
-  queryURL(url, { params=null, method='GET', cacheKey=null, reload=false, backgroundReload=false }={}, array) {
+  queryURL(url, { params=null, method='GET', cacheKey=null, reload=false, backgroundReload=false, modelName=null }={}, array) {
     let options = {};
     if (params) {
       options.data = params;
@@ -32,14 +32,15 @@ export default class QueryCache {
     let loadPromise;
 
     if (backgroundReload || reload || cachedValue === undefined) {
-      loadPromise = this._adapter.ajax(
+      loadPromise = this._adapter.processedAjax(
         adapterUrl,
         method,
         options
       ).then(rawPayload => {
         let serializer = this._store.serializerFor('-ember-m3');
         let payload = serializer.normalizeResponse(this._store, MegamorphicModel, rawPayload, cacheKey, 'query-url');
-        let result = this._createResult(payload, { url, params, method, cacheKey }, array);
+        console.log(`QueryURL fetched: ${JSON.stringify(payload.data)}`);
+        let result = this._createResult(payload, { url, params, method, cacheKey, modelName }, array);
 
         if (cacheKey) {
           this._addResultToCache(result, cacheKey);
@@ -143,8 +144,10 @@ export default class QueryCache {
       array._setInternalModels(internalModelOrModels);
       return array;
     } else if (Array.isArray(internalModelOrModels)) {
+      console.log(`queryURL: pushed ${internalModelOrModels.length} records into the store`);
       return this._createRecordArray(internalModelOrModels, query);
     } else {
+      console.log(`queryURL: pushed single record into the store`);
       return internalModelOrModels.getRecord();
     }
   }
@@ -169,7 +172,7 @@ export default class QueryCache {
 
   _createRecordArray(internalModels, query) {
     let array = M3RecordArray.create({
-      modelName: '-ember-m3',
+      modelName: query.modelName || '-ember-m3',
       content: Ember.A(),
       store: this._store,
       manager: this._recordArrayManager,

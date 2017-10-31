@@ -64,7 +64,15 @@ function resolveValue(key, value, modelName, store, schema, model) {
 
   let reference = schema.computeAttributeReference(key, value, modelName);
   if (reference) {
-    return store.peekRecord(reference.type || '-ember-m3', reference.id);
+    if(reference.type === null) {
+      // for schemas with a global id-space but multiple types, schemas may
+      // report a type of null
+      let internalModel = store._globalM3Cache[reference.id];
+      return internalModel ? internalModel.getRecord() : null;
+    } else {
+      // respect the user schema's type if provided
+      return store.peekRecord(reference.type, reference.id);
+    }
   }
 
   let nested = schema.computeNestedModel(key, value, modelName);
@@ -207,14 +215,16 @@ export default class MegamorphicModel extends Ember.Object {
   }
 
   _flushInitProperties() {
-    let keys = Object.keys(initProperites);
+    let propertiesToFlush = initProperites;
+    initProperites = Object.create(null);
+
+    let keys = Object.keys(propertiesToFlush);
     if (keys.length > 0) {
       for (let i=0; i<keys.length; ++i) {
         let key = keys[i];
-        let value = initProperites[key];
+        let value = propertiesToFlush[key];
         this.setUnknownProperty(key, value);
       }
-      initProperites = Object.create(null);
     }
   }
 
@@ -324,6 +334,7 @@ export default class MegamorphicModel extends Ember.Object {
     // can't call unloadRecord on nested m3 models
     this._internalModel.unloadRecord();
     this._store._queryCache.unloadRecord(this);
+    // TODO: purge from secondary index in store (map of entityurn -> model)
   }
 
   set(key, value) {

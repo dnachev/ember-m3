@@ -116,14 +116,14 @@ test('findRecord will issue a request for a projection, if it hasn\'t been fetch
     .then((record) => {
       assert.equal(get(record, 'description'), null);
       assert.equal(get(record, 'name'), 'Tom Dale');
-      assert.ok(findRecordSpy.calledTwice);
+      assert.ok(findRecordSpy.calledOnce);
     })
     .then(() => {
       return store.findRecord('com.example.projections.CompactPerson', '1');
     })
     .then(() => {
       // Second request for the same projection should correctly be cached
-      assert.ok(findRecordSpy.calledTwice);
+      assert.ok(findRecordSpy.calledOnce);
     });
   });
 });

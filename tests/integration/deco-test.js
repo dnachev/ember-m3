@@ -83,7 +83,10 @@ moduleFor('m3:store', 'integration/deco', {
       },
 
       models: {
-      }
+        'com.example.projections.CompactPerson': {
+          attributes: [ 'name' ],
+        },
+      },
     });
   },
 

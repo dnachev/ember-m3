@@ -296,9 +296,11 @@ export default class MegamorphicModel extends Ember.Object {
       }
     }
     Ember.endPropertyChanges();
-    let projections = Object.values(this._projections);
-    for (let i = 0; i < projections.length; i++) {
-      projections[i]._notifyProperties(keys);
+    if (this._projections) {
+      let projections = Object.values(this._projections);
+      for (let i = 0; i < projections.length; i++) {
+        projections[i]._notifyProperties(keys);
+      }
     }
   }
 

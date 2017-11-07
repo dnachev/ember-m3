@@ -106,13 +106,9 @@ export function extendDataAdapter(DataAdapter) {
   });
 }
 
-export function extendInternalModel() {
-}
-
 export function initialize() {
   extendStore(DS.Store);
   extendDataAdapter(Ember.DataAdapter);
-  extendInternalModel();
 }
 
 export default {

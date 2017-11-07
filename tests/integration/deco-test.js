@@ -2,18 +2,12 @@ import { test } from 'qunit';
 import { default as moduleFor }  from 'ember-qunit/module-for';
 import sinon from 'sinon';
 
-import DS from 'ember-data';
 import Ember from 'ember';
-import { zip } from 'lodash';
 
-import MegamorphicModel from 'ember-m3/model';
 import SchemaManager from 'ember-m3/schema-manager';
 import { initialize as initializeStore } from 'ember-m3/initializers/m3-store';
 
-const { get, set, run, RSVP: { Promise, } } = Ember;
-
-const UrnWithTypeRegex = /^urn:([a-zA-Z.]+):(.*)/;
-const UrnWithoutTypeRegex = /^urn:(.*)/;
+const { get, run, RSVP: { Promise, } } = Ember;
 
 const PersonTypeName = 'com.example.models.Person';
 const CompactPersonTypeName = 'com.example.projections.CompactPerson';
@@ -73,6 +67,38 @@ moduleFor('m3:store', 'integration/deco', {
         },
       },
     });
+
+    let projectionCache = Object.create(null);
+
+    let baseAdapter = this.adapter();
+    let superReloadRecord = baseAdapter.shouldReloadRecord;
+    baseAdapter.shouldReloadRecord = function shouldReloadProjection(store, snapshot) {
+      if (!snapshot.adapterOptions || !snapshot.adapterOptions.projectionName) {
+        return superReloadRecord.apply(this, arguments);
+      }
+      let cacheKey = `${snapshot.adapterOptions.projectionName}:${snapshot.id}`;
+      if (cacheKey in projectionCache) {
+        return false;
+      }
+      return true;
+    };
+
+    let superFindRecord = baseAdapter.findRecord;
+    baseAdapter.findRecord = function projectionFindRecord(store, modelClass, id, snapshot) {
+      let foundRecord = superFindRecord.apply(this, arguments);
+      if (!snapshot.adapterOptions || !snapshot.adapterOptions.projectionName) {
+        return foundRecord;
+      }
+      return foundRecord.then((payload) => {
+        // TODO Scan all inputs
+        let id = payload.data.id;
+        payload.data.projectionTypes.forEach((typeName) => {
+          let cacheKey = `${typeName}:${id}`;
+          projectionCache[cacheKey] = true;
+        });
+        return payload;
+      });
+    }
   },
 
   afterEach() {
@@ -91,28 +117,31 @@ moduleFor('m3:store', 'integration/deco', {
 test('findRecord will issue a request for a projection, if it hasn\'t been fetched', function(assert) {
   assert.expect(4);
 
-  let findRecordSpy = this.sinon.stub(this.adapter(), 'findRecord').returns(Promise.resolve(initialPayload, PersonTypeName));
+  let ajaxSpy = this.sinon.stub(this.adapter(), 'ajax').returns(Promise.resolve(initialPayload, PersonTypeName));
 
   let store = this.store();
   run(() => {
-    store.findRecord('com.example.models.Person', '1')
-    .then(() => {
-      findRecordSpy.reset();
-      findRecordSpy.returns(Promise.resolve(overrideType(initialPayload, CompactPersonTypeName)));
-      return store.findRecord('com.example.projections.CompactPerson', '1');
-    })
-    .then((record) => {
-      assert.equal(get(record, 'description'), null);
-      assert.equal(get(record, 'name'), 'Tom Dale');
-      assert.ok(findRecordSpy.calledOnce);
-    })
-    .then(() => {
-      return store.findRecord('com.example.projections.CompactPerson', '1');
-    })
-    .then(() => {
-      // Second request for the same projection should correctly be cached
-      assert.ok(findRecordSpy.calledOnce);
-    });
+    store.findRecord('com.example.models.Person', '1');
+  });
+
+  ajaxSpy.reset();
+  ajaxSpy.returns(Promise.resolve(overrideType(initialPayload, CompactPersonTypeName)));
+
+  run(() => {
+    store.findRecord('com.example.projections.CompactPerson', '1')
+      .then((record) => {
+        assert.equal(get(record, 'description'), null);
+        assert.equal(get(record, 'name'), 'Tom Dale');
+        assert.ok(ajaxSpy.calledOnce);
+      });
+  });
+
+  run(() => {
+    store.findRecord('com.example.projections.CompactPerson', '1')
+      .then(() => {
+        // Second request for the same projection should correctly be cached
+        assert.ok(ajaxSpy.calledOnce);
+      });
   });
 });
 

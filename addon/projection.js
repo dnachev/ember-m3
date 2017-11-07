@@ -2,7 +2,7 @@ import Ember from 'ember';
 import SchemaManager from './schema-manager';
 import MegamorphicModel from './model';
 
-const { get } = Ember;
+const { get, set } = Ember;
 
 export default class Projection extends Ember.Object {
   init() {
@@ -21,6 +21,12 @@ export default class Projection extends Ember.Object {
     }
     let projectionType = this._schema.computeProjectionType(key, this._projectionName);
     return value.getProjection(projectionType);
+  }
+
+  setUnknownProperty(key, value) {
+    if (! this._schema.isAttributeIncluded(this._projectionName, key)) { return; }
+    set(this._parentModel, key, value);
+    // TODO nested models are problematic as they need to be merged and not replaced
   }
 
   _notifyProperties(keys) {

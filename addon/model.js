@@ -297,12 +297,8 @@ export default class MegamorphicModel extends Ember.Object {
       }
     }
     Ember.endPropertyChanges();
-    if (this._projections) {
-      let projections = Object.values(this._projections);
-      for (let i = 0; i < projections.length; i++) {
-        projections[i]._notifyProperties(keys);
-      }
-    }
+
+    this._notifyProjectionProperties(keys);
   }
 
   _didReceiveNestedProperties(data) {
@@ -447,6 +443,8 @@ export default class MegamorphicModel extends Ember.Object {
     }
 
     propertyDidChange(this, key);
+
+    this._notifyProjectionProperties([key]);
   }
 
   _setRecordArray(key, models) {
@@ -478,6 +476,15 @@ export default class MegamorphicModel extends Ember.Object {
     });
 
     return this._projections[projectionName] = projection;
+  }
+
+  _notifyProjectionProperties(keys) {
+    if (this._projections) {
+      let projections = Object.values(this._projections);
+      for (let i = 0; i < projections.length; i++) {
+        projections[i]._notifyProperties(keys);
+      }
+    }
   }
 
   static toString() {

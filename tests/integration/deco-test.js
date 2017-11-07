@@ -7,7 +7,7 @@ import Ember from 'ember';
 import SchemaManager from 'ember-m3/schema-manager';
 import { initialize as initializeStore } from 'ember-m3/initializers/m3-store';
 
-const { addObserver, get, run, RSVP: { Promise, } } = Ember;
+const { addObserver, get, set, run, RSVP: { Promise, } } = Ember;
 
 const PersonTypeName = 'com.example.models.Person';
 const CompactPersonTypeName = 'com.example.projections.CompactPerson';
@@ -44,6 +44,15 @@ const updatePayload = {
   }
 };
 
+
+function setResponse(context, payload) {
+  if (!context.ajaxStub) {
+    context.ajaxStub = context.sinon.stub(context.adapter(), 'ajax');
+  }
+  context.ajaxStub.reset();
+  context.ajaxStub.returns(Promise.resolve(payload));
+  return context.ajaxStub;
+}
 
 moduleFor('m3:store', 'integration/deco', {
   integration: true,
@@ -109,6 +118,7 @@ moduleFor('m3:store', 'integration/deco', {
 
     let superFindRecord = baseAdapter.findRecord;
     baseAdapter.findRecord = function projectionFindRecord(store, modelClass, id, snapshot) {
+      // TODO This should probably be captured when pushing records into the store
       let foundRecord = superFindRecord.apply(this, arguments);
       if (!snapshot.adapterOptions || !snapshot.adapterOptions.projectionName) {
         return foundRecord;
@@ -141,15 +151,14 @@ moduleFor('m3:store', 'integration/deco', {
 test('findRecord will issue a request for a projection, if it hasn\'t been fetched', function(assert) {
   assert.expect(4);
 
-  let ajaxSpy = this.sinon.stub(this.adapter(), 'ajax').returns(Promise.resolve(initialPayload));
+  let ajaxSpy = setResponse(this, initialPayload);
 
   let store = this.store();
   run(() => {
     store.findRecord(PersonTypeName, '1');
   });
 
-  ajaxSpy.reset();
-  ajaxSpy.returns(Promise.resolve(overrideType(initialPayload, CompactPersonTypeName)));
+  ajaxSpy = setResponse(this, overrideType(initialPayload, CompactPersonTypeName));
 
   run(() => {
     store.findRecord(CompactPersonTypeName, '1')
@@ -172,7 +181,7 @@ test('findRecord will issue a request for a projection, if it hasn\'t been fetch
 test('peekRecord will not return a projection, if it hasn\'t been fetched', function(assert) {
   assert.expect(1);
   
-  this.sinon.stub(this.adapter(), 'ajax').returns(Promise.resolve(initialPayload));
+  setResponse(this, initialPayload);
 
   let store = this.store();
   run(() => {
@@ -189,7 +198,7 @@ test('findRecord will update existing projetions', function(assert) {
 
   let compactPersonNotified = false;
 
-  let ajaxSpy = this.sinon.stub(this.adapter(), 'ajax').returns(Promise.resolve(overrideType(initialPayload, CompactPersonTypeName)));
+  setResponse(this, overrideType(initialPayload, CompactPersonTypeName));
 
   let store = this.store();
   run(() => {
@@ -202,8 +211,7 @@ test('findRecord will update existing projetions', function(assert) {
     compactPersonNotified = true;
   });
 
-  ajaxSpy.reset();
-  ajaxSpy.returns(Promise.resolve(updatePayload));
+  setResponse(this, updatePayload);
 
   run(() => {
     store.findRecord(PersonTypeName, '1');
@@ -221,13 +229,49 @@ test('findRecord will update existing projetions', function(assert) {
 });
 
 test('set will update existing projections', function(assert) {
-  assert.expect(0)
+  assert.expect(4);
+
+  setResponse(this, overrideType(initialPayload, CompactPersonTypeName));
+
+  let store = this.store();
+  run(() => {
+    store.findRecord(CompactPersonTypeName, '1');
+  });
+
+  setResponse(this, initialPayload);
+
+  run(() => {
+    store.findRecord(PersonTypeName, '1');
+  });
+
+  let compactPerson = store.peekRecord(CompactPersonTypeName, '1');
+  let person = store.peekRecord(PersonTypeName, '1');
+
+  let compactPersonNotified = false;
+  addObserver(compactPerson, 'name', () => {
+    compactPersonNotified = true;
+  });
+
+  set(person, 'name', 'Yehuda Katz');
+
+  assert.ok(compactPersonNotified);
+  assert.equal(get(compactPerson, 'name'), 'Yehuda Katz');
+
+  let personNotified = false;
+  addObserver(person, 'name', () => {
+    personNotified = true;
+  });
+
+  set(compactPerson, 'name', 'David Hamilton');
+
+  assert.ok(personNotified);
+  assert.equal(get(person, 'name'), 'David Hamilton');
 });
 
 test('clients cannot access not white-listed properties in nested models', function(assert) {
   assert.expect(2);
 
-  this.sinon.stub(this.adapter(), 'ajax').returns(Promise.resolve(overrideType(initialPayload, CompactPersonTypeName)));
+  setResponse(this, overrideType(initialPayload, CompactPersonTypeName));
 
   let store = this.store();
   run(() => {

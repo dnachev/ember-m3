@@ -48,28 +48,12 @@ moduleFor('m3:store', 'integration/deco', {
         return /^com.example.models\./i.test(modelName) || /^com.example.projections\./i.test(modelName);
       },
 
-      computeAttributeReference(key, value) {
-        if (/^isbn:/.test(value)) {
-          return {
-            id: value,
-            type: 'com.example.bookstore.Book',
-          }
-        } else if (UrnWithTypeRegex.test(value)) {
-          let parts = UrnWithTypeRegex.exec(value);
-          return {
-            type: parts[1],
-            id: parts[2],
-          };
-        } else if (UrnWithoutTypeRegex.test(value)) {
-          return {
-            type: null,
-            id: value,
-          };
-        }
+      computeAttributeReference() {
+        return null;
       },
 
-      isAttributeArrayReference(key) {
-        return key === 'otherBooksInSeries';
+      isAttributeArrayReference() {
+        return false;
       },
 
       computeNestedModel(key, value) {
@@ -84,6 +68,7 @@ moduleFor('m3:store', 'integration/deco', {
 
       models: {
         'com.example.projections.CompactPerson': {
+          projects: 'com.example.models.Person',
           attributes: [ 'name' ],
         },
       },

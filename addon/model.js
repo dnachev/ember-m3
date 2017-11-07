@@ -213,6 +213,7 @@ export default class MegamorphicModel extends Ember.Object {
     this._store = properties.store;
     this._internalModel = properties._internalModel;
     this.id = this._internalModel.id;
+    this._projectionName = properties._projectionName || null;
     this._cache = Object.create(null);
     this._schema = SchemaManager;
 
@@ -257,7 +258,7 @@ export default class MegamorphicModel extends Ember.Object {
   }
 
   get _modelName() {
-    return this._internalModel.modelName;
+    return this._projectionName || this._internalModel.modelName;
   }
 
   __defineNonEnumerable(property) {
@@ -295,6 +296,10 @@ export default class MegamorphicModel extends Ember.Object {
       }
     }
     Ember.endPropertyChanges();
+    let projections = Object.values(this._projections);
+    for (let i = 0; i < projections.length; i++) {
+      projections[i]._notifyProperties(keys);
+    }
   }
 
   _didReceiveNestedProperties(data) {
@@ -457,6 +462,27 @@ export default class MegamorphicModel extends Ember.Object {
     }
   }
 
+  getProjection(projectionName) {
+    if (this._parentModel) {
+      throw new Error('Cannot call getProjection on nested model');
+    }
+    if (!this._projections) {
+      this._projections = Object.create(null);
+    }
+    if (this._projections[projectionName]) {
+      return this._projections[projectionName];
+    }
+    let projection = new MegamorphicModel({
+      // TODO Figure out what to do with the state
+      store: this.store,
+      _internalModel: this._internalModel,
+      id: this.id,
+      _projectionName: projectionName,
+    });
+
+    return this._projections[projectionName] = projection;
+  }
+
   static toString() {
     return 'MegamorphicModel';
   }
@@ -474,6 +500,7 @@ MegamorphicModel.prototype.id = null;
 MegamorphicModel.prototype.currentState = null;
 MegamorphicModel.prototype.isError = null;
 MegamorphicModel.prototype.adapterError = null;
+MegamorphicModel.prototype._projectionName = null;
 
 MegamorphicModel.relationshipsByName = new Ember.Map();
 

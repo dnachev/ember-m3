@@ -45,6 +45,11 @@ export class SchemaManager {
     return transform ? transform(value) : value;
   }
 
+  resolveProjectionName(modelName) {
+    let model = this._modelSchema(modelName);
+    return model ? model.projects : undefined;
+  }
+
   registerSchema(schema) {
     this.schema = schema;
   }

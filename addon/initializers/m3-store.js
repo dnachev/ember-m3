@@ -84,6 +84,22 @@ export function extendStore(Store) {
       }));
       // TODO Get into PromiseProxy business
       return baseModel.then((record) => record.getProjection(modelName));
+    },
+
+    peekRecord(modelName, id) {
+      const resolvedModelName = SchemaManager.resolveProjectionName(modelName);
+      if (!resolvedModelName) {
+        return this._super(modelName, id);
+      }
+      let baseModel = this._super(resolvedModelName, id);
+      if (!baseModel) {
+        return null;
+      }
+      let adapter = this.adapterFor(resolvedModelName);
+      if (!adapter.isProjectionLoaded(modelName, id)) {
+        return null;
+      }
+      return baseModel.getProjection(modelName);
     }
   });
 }

@@ -24,7 +24,11 @@ const initialPayload = {
     type: PersonTypeName,
     attributes: {
       name: 'Tom Dale',
-      description: 'JavaScript thinkfluencer'
+      description: 'JavaScript thinkfluencer',
+      address: {
+        street: '1000 W Maude Ave',
+        country: 'US'
+      }
     }
   }
 };
@@ -61,21 +65,35 @@ moduleFor('m3:store', 'integration/deco', {
         return false;
       },
 
-      computeNestedModel(key, value) {
-        if (value && typeof value === 'object' && value.constructor !== Date) {
-          return {
-            type: value.type,
-            id: value.id,
-            attributes: value,
-          }
+      computeNestedModel(key, value, modelName) {
+        if (!value || typeof value !== 'object' || value.constructor === Date) {
+          return null;
+        }
+        let nestedModelType = value.type;
+
+        let modelSchema = this.models[modelName];
+        if (modelSchema && modelSchema.attributesTypes && modelSchema.attributesTypes[key]) {
+          nestedModelType = modelSchema.attributesTypes[key];
+        }
+
+        return {
+          type: nestedModelType,
+          id: value.id,
+          attributes: value,
         }
       },
 
       models: {
         'com.example.projections.CompactPerson': {
           projects: 'com.example.models.Person',
-          attributes: [ 'name' ],
+          attributes: [ 'name', 'address' ],
+          attributesTypes: {
+            address: 'com.example.projections.CountryOnly',
+          }
         },
+        'com.example.projections.CountryOnly': {
+          attributes: [ 'country' ],
+        }
       },
     });
 
@@ -214,6 +232,18 @@ test('set will update existing projections', function(assert) {
 });
 
 test('clients cannot access not white-listed properties in nested models', function(assert) {
-  assert.expect(0)
+  assert.expect(2);
+
+  this.sinon.stub(this.adapter(), 'ajax').returns(Promise.resolve(overrideType(initialPayload, CompactPersonTypeName)));
+
+  let store = this.store();
+  run(() => {
+    store.findRecord(CompactPersonTypeName, '1');
+  });
+
+  let compactPerson = store.peekRecord(CompactPersonTypeName, '1');
+
+  assert.equal(get(compactPerson, 'address.country'), 'US');
+  assert.equal(get(compactPerson, 'address.street'), null);
 });
 

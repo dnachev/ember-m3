@@ -5,6 +5,7 @@ import { dasherize } from '@ember/string';
 import SchemaManager from './schema-manager';
 import M3RecordArray from './record-array';
 import { setDiff, OWNER_KEY } from './util';
+import Projection from './projection';
 
 const {
   get, set, isEqual, propertyWillChange, propertyDidChange, computed, A
@@ -465,20 +466,14 @@ export default class MegamorphicModel extends Ember.Object {
   }
 
   getProjection(projectionName) {
-    if (this._parentModel) {
-      throw new Error('Cannot call getProjection on nested model');
-    }
     if (!this._projections) {
       this._projections = Object.create(null);
     }
     if (this._projections[projectionName]) {
       return this._projections[projectionName];
     }
-    let projection = new MegamorphicModel({
-      // TODO Figure out what to do with the state
-      store: this.store,
-      _internalModel: this._internalModel,
-      id: this.id,
+    let projection = new Projection({
+      _parentModel: this,
       _projectionName: projectionName,
     });
 

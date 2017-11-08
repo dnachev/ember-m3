@@ -5,7 +5,7 @@ import { dasherize } from '@ember/string';
 import SchemaManager from './schema-manager';
 import M3RecordArray from './record-array';
 import { setDiff, OWNER_KEY } from './util';
-import Projection from './projection';
+// import Projection from './projection';
 
 const {
   get, set, isEqual, propertyWillChange, propertyDidChange, computed, A
@@ -208,7 +208,7 @@ const retrieveFromCurrentState = computed('currentState', function(key) {
 //      CP or setknownProperty can rely on any initialization
 let initProperites = Object.create(null);
 
-export default class MegamorphicModel extends Ember.Object {
+export default class MegamorphicModel extends Ember.ObjectProxy {
   init(properties) {
     this._super(...arguments);
     this._store = properties.store;
@@ -297,8 +297,6 @@ export default class MegamorphicModel extends Ember.Object {
       }
     }
     Ember.endPropertyChanges();
-
-    this._notifyProjectionProperties(keys);
   }
 
   _didReceiveNestedProperties(data) {
@@ -424,6 +422,11 @@ export default class MegamorphicModel extends Ember.Object {
       return;
     }
 
+    if (this.content) {
+      set(this.content, key, value);
+      return;
+    }
+
     if(this._schema.getAttributeAlias(this._modelName, key)) {
       throw new Error(`You tried to set '${key}' to '${value}', but '${key}' is an alias in '${this._modelName}' and aliases are read-only`);
     }
@@ -443,8 +446,6 @@ export default class MegamorphicModel extends Ember.Object {
     }
 
     propertyDidChange(this, key);
-
-    this._notifyProjectionProperties([key]);
   }
 
   _setRecordArray(key, models) {
@@ -464,27 +465,14 @@ export default class MegamorphicModel extends Ember.Object {
   }
 
   getProjection(projectionName) {
-    if (!this._projections) {
-      this._projections = Object.create(null);
-    }
-    if (this._projections[projectionName]) {
-      return this._projections[projectionName];
-    }
-    let projection = new Projection({
-      _parentModel: this,
+    let projection = new MegamorphicModel({
+      content: this,
+      store: this.store,
+      _internalModel: this._internalModel,
+      id: this.id,
       _projectionName: projectionName,
     });
-
-    return this._projections[projectionName] = projection;
-  }
-
-  _notifyProjectionProperties(keys) {
-    if (this._projections) {
-      let projections = Object.values(this._projections);
-      for (let i = 0; i < projections.length; i++) {
-        projections[i]._notifyProperties(keys);
-      }
-    }
+    return projection;
   }
 
   static toString() {

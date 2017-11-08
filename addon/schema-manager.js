@@ -50,11 +50,6 @@ export class SchemaManager {
     return model ? model.projects : undefined;
   }
 
-  computeProjectionType(key, modelName) {
-    let attributesTypes = this._modelSchemaProperty(modelName, 'attributesTypes');
-    return attributesTypes ? attributesTypes[key] : null;
-  }
-
   registerSchema(schema) {
     this.schema = schema;
   }

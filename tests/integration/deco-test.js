@@ -74,12 +74,17 @@ moduleFor('m3:store', 'integration/deco', {
         return false;
       },
 
-      computeNestedModel(key, value) {
+      computeNestedModel(key, value, modelName) {
         if (!value || typeof value !== 'object' || value.constructor === Date) {
           return null;
         }
+        let valueType = value.type;
+        let modelSchema = this.models[modelName];
+        if (modelSchema && modelSchema.attributesTypes && modelSchema.attributesTypes[key]) {
+          valueType = modelSchema.attributesTypes[key];
+        }
         return {
-          type: value.type,
+          type: valueType,
           id: value.id,
           attributes: value,
         }

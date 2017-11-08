@@ -95,10 +95,10 @@ moduleFor('m3:store', 'integration/deco', {
           projects: 'com.example.models.Person',
           attributes: [ 'name', 'address' ],
           attributesTypes: {
-            address: 'com.example.projections.CountryOnly',
+            address: 'com.example.projections.country-only',
           }
         },
-        'com.example.projections.CountryOnly': {
+        'com.example.projections.country-only': {
           attributes: [ 'country' ],
         }
       },

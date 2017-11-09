@@ -91,8 +91,8 @@ moduleFor('m3:store', 'integration/deco', {
       },
 
       models: {
-        'com.example.projections.CompactPerson': {
-          projects: 'com.example.models.Person',
+        'com.example.projections.compact-person': {
+          projects: 'com.example.models.person',
           attributes: [ 'name', 'address' ],
           attributesTypes: {
             address: 'com.example.projections.country-only',

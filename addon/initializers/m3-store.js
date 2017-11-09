@@ -56,51 +56,38 @@ export function extendStore(Store) {
 
     _pushInternalModel(jsonAPIResource) {
       let internalModel = this._super(jsonAPIResource);
+      // TODO Fix the handling of the m3 global cache to correctly handle projected types
+      // the cache must work only for 
       if (SchemaManager.includesModel(jsonAPIResource.type)) {
         this._globalM3Cache[internalModel.id] = internalModel;
       }
-      return internalModel;
+      if (!jsonAPIResource.projectionTypes) {
+        return internalModel;
+      }
+      // model has been loaded with projections
+      // push dummy internal models for the projections
+      let projectionTypes = jsonAPIResource.projectionTypes;
+      let internalModels = new Array(projectionTypes.length);
+      for (let i = 0; i < projectionTypes.length; i++) {
+        let projectionData = {
+          id: jsonAPIResource.id,
+          type: projectionTypes[i],
+          attributes: {
+            __projects: jsonAPIResource.type
+          }
+        };
+        internalModels[i] = this._load(projectionData);
+      }
+      // invalidate the load state of the main internal model - figure out how the proj M3 will peek the record
+      // _pushInternalModel is invoked always for single resource, but with projectionTypes we can encode multiple records
+      // projection of the same data, we don't know which one is the top one - for now we will assume it is the first entry
+      return internalModels[0];
     },
 
     _internalModelDestroyed(internalModel) {
       delete this._globalM3Cache[internalModel.id];
       return this._super(internalModel);
     },
-
-    findRecord(modelName, id, options) {
-      const resolvedModelName = SchemaManager.resolveProjectionName(modelName);
-      if (!resolvedModelName) {
-        return this._super(modelName, id, options);
-      }
-      let adapterOptions = {
-        projectionName: modelName,
-      };
-      if (options && options.adapterOptions) {
-        adapterOptions = Object.assign(adapterOptions, options.adapterOptions);
-      }
-
-      const baseModel = this._super(resolvedModelName, id, Object.assign(options || {}, {
-        adapterOptions,
-      }));
-      // TODO Get into PromiseProxy business
-      return baseModel.then((record) => record.getProjection(modelName));
-    },
-
-    peekRecord(modelName, id) {
-      const resolvedModelName = SchemaManager.resolveProjectionName(modelName);
-      if (!resolvedModelName) {
-        return this._super(modelName, id);
-      }
-      let baseModel = this._super(resolvedModelName, id);
-      if (!baseModel) {
-        return null;
-      }
-      let adapter = this.adapterFor(resolvedModelName);
-      if (!adapter.isProjectionLoaded(modelName, id)) {
-        return null;
-      }
-      return baseModel.getProjection(modelName);
-    }
   });
 }
 
